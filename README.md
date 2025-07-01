@@ -1,5 +1,4 @@
 # SECUPATCH
-#### Video Demo:  https://www.youtube.com/watch?v=edXzjIa_5Eo
 
 ## 📋 Overview
     Web-based compliance dashboard designed to help IT administrators, security analysts, and infrastructure teams ensure that servers in their organization meet required patching standards. Users can upload a patch manifest (YAML) and system log file (CSV), and SecuPatch automatically evaluates compliance, visualizes server patching status, and offers a downloadable compliance report.
