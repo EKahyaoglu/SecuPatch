@@ -1,0 +1,16 @@
+server,patch,timestamp
+srv01,patch1,2024-05-01
+srv02,patch2,2024-05-02
+srv03,patch2,2024-05-02
+srv04,patch4,2024-05-03
+srv05,patch3,2024-04-30
+srv06,patch2,2024-04-28
+srv07,patch5,2024-05-05
+srv01,patch2,2024-06-01
+srv02,patch1,2024-06-02
+srv03,patch3,2024-06-03
+srv08,patch7,2024-05-10
+srv09,patch1,2024-06-10
+srv10,patch9,2024-06-11
+srv03,patch2,2024-06-20
+srv06,patch1,2024-06-15
