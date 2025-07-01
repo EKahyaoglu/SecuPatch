@@ -31,7 +31,7 @@ This project uses `pytest` to validate core functionality. Three major functions
 
 <b>Dependencies include:</b>
 
-    • streamlit,
-    • pandas,
-    • pyyaml,
+    • streamlit
+    • pandas
+    • pyyaml
     • plotly
