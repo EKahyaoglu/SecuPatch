@@ -17,27 +17,26 @@ import plotly.express as px
 from io import StringIO
 
 
-def load_patch_manifest(file_path):
+def load_patch_manifest(file_obj):
     """
     Load the patch manifest from a YAML (.yaml/.yml) file.
 
     Args:
-        file_path: File-like object containing YAML content.
+        file_obj: File-like object containing YAML content.
 
     Returns:
         dict: Dictionary mapping server names to required patch IDs.
     """
-    # Open YAML file and parse its contents into a dict
-    with open(file_path, "r") as f:
-        return yaml.safe_load(f)
+    # Parse YAML content from file-like object
+    return yaml.safe_load(file_obj)
 
 
-def parse_log_file(file_path):
+def parse_log_file(file_obj):
     """
     Parse the uploaded CSV file and extract server patch log data.
 
     Args:
-        file_path: Path to the CSV log file.
+        file_obj: File-like object containing CSV content.
 
     Returns:
         list: List of dictionaries representing a server patch log.
@@ -45,7 +44,7 @@ def parse_log_file(file_path):
     logs = []
 
     # Read CSV file into a pandas DataFrame
-    df = pd.read_csv(file_path)
+    df = pd.read_csv(file_obj)
 
     # Error Handling for CSV
     expected_columns = {"server", "patch", "timestamp"}
@@ -85,13 +84,58 @@ def evaluate_compliance(patch_manifest, logs):
         matching_logs = [log for log in logs if log["server"] == server]
 
         # Determine if required patch was applied
-        matched = any(log["patch"] == required_patch for log in matching_logs)
+        has_required_patch = any(log["patch"] == required_patch for log in matching_logs)
 
-        # Mark server as compliant/non-compliant
-        compliance[server] = "Compliant" if matched else "Non-Compliant"
+        # Calculate compliance score (0-100)
+        score = 0
+        
+        if has_required_patch:
+            # Base score for having required patch
+            score = 60
+            
+            # Bonus points for patch recency (up to 25 points)
+            if matching_logs:
+                latest_date = max(log["timestamp"] for log in matching_logs)
+                days_since_2024 = (latest_date - datetime(2024, 1, 1)).days
+                if days_since_2024 > 150:  # Recent patches (after ~May 2024)
+                    score += 25
+                elif days_since_2024 > 90:  # Moderately recent
+                    score += 15
+                else:  # Older patches
+                    score += 5
+            
+            # Bonus points for patch management activity (up to 15 points)
+            patch_count = len(matching_logs)
+            if patch_count >= 3:
+                score += 15
+            elif patch_count >= 2:
+                score += 10
+            else:
+                score += 5
+                
+        else:
+            # Partial credit for having some patches, even if not the required one
+            if matching_logs:
+                patch_count = len(matching_logs)
+                if patch_count >= 3:
+                    score = 30  # Shows active patch management
+                elif patch_count >= 2:
+                    score = 20
+                else:
+                    score = 10
+            # If no patches at all, score remains 0
 
-        # Assign score (100: Compliant, 0: Non-Compliant)
-        score = 100 if matched else 0
+        # Ensure score doesn't exceed 100
+        score = min(score, 100)
+
+        # Determine compliance status based on score
+        if score >= 80:
+            compliance[server] = "Compliant"
+        elif score >= 40:
+            compliance[server] = "Partially Compliant"
+        else:
+            compliance[server] = "Non-Compliant"
+
         scores.append({"server": server, "score": score})
 
         # Find most recent patch date (If no logs exist, mark as "N/A")
@@ -108,7 +152,7 @@ def evaluate_compliance(patch_manifest, logs):
 
 def generate_summary_text(compliance):
     """
-    Generate a plain-text summary of compliant and non-compliant servers.
+    Generate a plain-text summary of compliant, partially compliant, and non-compliant servers.
 
     Args:
         compliance (dict): Dictionary of server compliance statuses.
@@ -117,11 +161,13 @@ def generate_summary_text(compliance):
         str: A formatted compliance summary string.
     """
     compliant = [s for s, status in compliance.items() if status == "Compliant"]
+    partially_compliant = [s for s, status in compliance.items() if status == "Partially Compliant"]
     non_compliant = [s for s, status in compliance.items() if status == "Non-Compliant"]
 
     # Format results into compliance summary string
     summary = "--- COMPLIANCE SUMMARY ---\n"
     summary += f"Compliant Servers ({len(compliant)}): {compliant}\n"
+    summary += f"Partially Compliant Servers ({len(partially_compliant)}): {partially_compliant}\n"
     summary += f"Non-Compliant Servers ({len(non_compliant)}): {non_compliant}\n"
     return summary
 
@@ -145,7 +191,7 @@ def main():
     # Information & Upload Fields
     company = st.text_input("Enter your company/school name:")
     reviewer = st.text_input("Enter your name (Reviewer):")
-    yaml_file = st.file_uploader("Upload Patch Manifest (.yml/.yaml)", type=["yml"])
+    yaml_file = st.file_uploader("Upload Patch Manifest (.yml/.yaml)", type=["yml", "yaml"])
     csv_file = st.file_uploader("Upload System Logs (.csv)", type=["csv"])
 
     if yaml_file and csv_file:
